@@ -3,6 +3,7 @@ package com.stillgrove.stillgroveapi.auth.controller;
 import com.stillgrove.stillgroveapi.auth.dto.Credentials;
 import com.stillgrove.stillgroveapi.auth.dto.UserView;
 import com.stillgrove.stillgroveapi.auth.service.AuthService;
+import com.stillgrove.stillgroveapi.auth.service.AuthRateLimiter;
 
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -17,14 +18,16 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.security.web.csrf.CsrfToken;
 
 import java.util.Map;
+import java.time.Duration;
 
 @RestController
 @RequestMapping("/api/auth")
 public class AuthController {
     private final AuthService service;
+    private final AuthRateLimiter limiter;
     private final HttpSessionSecurityContextRepository contextRepository = new HttpSessionSecurityContextRepository();
 
-    public AuthController(AuthService service) { this.service = service; }
+    public AuthController(AuthService service,AuthRateLimiter limiter) { this.service = service; this.limiter=limiter; }
 
     @GetMapping("/csrf")
     public Map<String, String> csrf(CsrfToken token) {
@@ -33,6 +36,7 @@ public class AuthController {
 
     @PostMapping("/register")
     public UserView register(@Valid @RequestBody Credentials body, HttpServletRequest request, HttpServletResponse response) {
+        limiter.check("register",request.getRemoteAddr(),5,Duration.ofHours(1));
         UserView user = service.register(body.email(), body.password());
         signIn(user, request, response);
         return user;
@@ -40,6 +44,7 @@ public class AuthController {
 
     @PostMapping("/login")
     public UserView login(@Valid @RequestBody Credentials body, HttpServletRequest request, HttpServletResponse response) {
+        limiter.check("login",request.getRemoteAddr(),30,Duration.ofMinutes(10));
         UserView user = service.login(body.email(), body.password());
         signIn(user, request, response);
         return user;
