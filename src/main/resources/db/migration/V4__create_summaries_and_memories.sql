@@ -1,0 +1,43 @@
+CREATE TABLE conversation_summaries (
+    id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    user_id BIGINT UNSIGNED NOT NULL,
+    conversation_id BIGINT UNSIGNED NOT NULL,
+    content TEXT NOT NULL,
+    covered_sequence_no INT UNSIGNED NOT NULL DEFAULT 0,
+    version INT UNSIGNED NOT NULL DEFAULT 1,
+    status VARCHAR(20) NOT NULL DEFAULT 'READY',
+    model_name VARCHAR(100) NULL,
+    created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+    updated_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
+    PRIMARY KEY (id),
+    UNIQUE KEY uk_conversation_summaries_conversation (conversation_id),
+    KEY idx_conversation_summaries_user (user_id),
+    CONSTRAINT fk_conversation_summaries_user FOREIGN KEY (user_id) REFERENCES users (id),
+    CONSTRAINT fk_conversation_summaries_conversation FOREIGN KEY (conversation_id) REFERENCES conversations (id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+CREATE TABLE memories (
+    id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    user_id BIGINT UNSIGNED NOT NULL,
+    content TEXT NOT NULL,
+    category VARCHAR(40) NOT NULL,
+    status VARCHAR(20) NOT NULL DEFAULT 'ACTIVE',
+    source_conversation_id BIGINT UNSIGNED NULL,
+    source_message_id BIGINT UNSIGNED NULL,
+    confidence DECIMAL(4,3) NULL,
+    last_verified_at DATETIME(3) NULL,
+    invalidation_reason VARCHAR(100) NULL,
+    version INT UNSIGNED NOT NULL DEFAULT 1,
+    vector_point_id CHAR(36) NOT NULL,
+    expires_at DATETIME(3) NULL,
+    deleted_at DATETIME(3) NULL,
+    created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+    updated_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
+    PRIMARY KEY (id),
+    UNIQUE KEY uk_memories_vector_point (vector_point_id),
+    KEY idx_memories_user_status_expiry (user_id, status, expires_at, id),
+    KEY idx_memories_source_conversation (source_conversation_id),
+    CONSTRAINT fk_memories_user FOREIGN KEY (user_id) REFERENCES users (id),
+    CONSTRAINT fk_memories_source_conversation FOREIGN KEY (source_conversation_id) REFERENCES conversations (id),
+    CONSTRAINT fk_memories_source_message FOREIGN KEY (source_message_id) REFERENCES messages (id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;

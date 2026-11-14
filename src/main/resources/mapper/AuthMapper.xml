@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.stillgrove.stillgroveapi.auth.mapper.AuthMapper">
+    <resultMap id="accountRow" type="com.stillgrove.stillgroveapi.auth.mapper.AuthAccountRow">
+        <id property="id" column="id"/>
+        <result property="email" column="email"/>
+        <result property="hash" column="password_hash"/>
+        <result property="status" column="status"/>
+        <result property="lockedUntil" column="locked_until"/>
+    </resultMap>
+
+    <insert id="insertUser" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO users (status) VALUES ('ACTIVE')
+    </insert>
+    <insert id="insertCredential">
+        INSERT INTO user_credentials (user_id, email, password_hash)
+        VALUES (#{userId}, #{email}, #{passwordHash})
+    </insert>
+    <insert id="insertProfile">
+        INSERT INTO user_profiles (user_id) VALUES (#{userId})
+    </insert>
+    <insert id="insertSettings">
+        INSERT INTO user_settings (user_id) VALUES (#{userId})
+    </insert>
+
+    <select id="findByEmail" resultMap="accountRow">
+        SELECT u.id, c.email, c.password_hash, u.status, c.locked_until
+        FROM user_credentials c JOIN users u ON u.id = c.user_id
+        WHERE c.email = #{email}
+    </select>
+    <select id="findActiveById" resultMap="accountRow">
+        SELECT u.id, c.email, c.password_hash, u.status, c.locked_until
+        FROM users u JOIN user_credentials c ON c.user_id = u.id
+        WHERE u.id = #{userId} AND u.status = 'ACTIVE'
+    </select>
+
+    <update id="recordLoginFailure">
+        UPDATE user_credentials
+        SET failed_login_count = failed_login_count + 1,
+            locked_until = CASE WHEN failed_login_count + 1 >= 5
+                THEN DATE_ADD(UTC_TIMESTAMP(3), INTERVAL 15 MINUTE)
+                ELSE locked_until END
+        WHERE user_id = #{userId}
+    </update>
+    <update id="recordLoginSuccess">
+        UPDATE user_credentials
+        SET failed_login_count = 0, locked_until = NULL
+        WHERE user_id = #{userId}
+    </update>
+    <update id="recordLastLogin">
+        UPDATE users SET last_login_at = UTC_TIMESTAMP(3) WHERE id = #{userId}
+    </update>
+</mapper>
